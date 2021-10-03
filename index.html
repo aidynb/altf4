@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Order Book</title>
+    <style>
+        .flex {
+            display: flex;
+        }
+
+        .flex-row {
+            flex-direction: row;
+        }
+
+        .mr-3 {
+            margin-right: 3em;
+        }
+
+        .mr-10 {
+            margin-right: 10em;
+        }
+
+        .mb-3 {
+            margin-bottom: 3em;
+        }
+    </style>
+</head>
+
+<body>
+    <div>Symbol:</div>
+    <div id="symbol" class="mb-3"></div>
+    <div class="flex flex-row">
+        <div class="mr-10">
+            <div>BIDS</div>
+            <div class="flex flex-row mb-3">
+                <div class="mr-3">
+                    <div>Price:</div>
+                    <div id="bids-price"></div>
+                </div>
+                <div>
+                    <div>Quantity:</div>
+                    <div id="bids-quantity"></div>
+                </div>
+            </div>
+            <div>BIDS Total:</div>
+            <div id="bids-total"></div>
+        </div>
+
+        <div>
+            <div>ASKS</div>
+            <div class="flex flex-row mb-3">
+                <div class="mr-3">
+                    <div>Price:</div>
+                    <div id="asks-price"></div>
+                </div>
+                <div>
+                    <div>Quantity:</div>
+                    <div id="asks-quantity"></div>
+                </div>
+            </div>
+            <div>ASKS Total:</div>
+            <div id="asks-total"></div>
+        </div>
+    </div>
+</body>
+
+<script>
+
+    // JS код очень кривой, потому что не успевал. Так что вышло немного страшно
+
+    // get all elements from dom
+    let symbol = document.getElementById("symbol")
+
+    let bidsPriceEl = document.getElementById("bids-price")
+    let bidsQuantityEl = document.getElementById("bids-quantity")
+
+    let asksPriceEl = document.getElementById("asks-price")
+    let asksQuantityEl = document.getElementById("asks-quantity")
+
+    // Add 20 div elements to bids price, bids quantity and ask price, ask quantity
+    for (let i = 0; i < 20; i++) {
+        let divBidPrice = document.createElement("div")
+        let divBidQuantity = document.createElement("div")
+
+        let divAskPrice = document.createElement("div")
+        let divAskQuantity = document.createElement("div")
+
+        bidsPriceEl.appendChild(divBidPrice)
+        bidsQuantityEl.appendChild(divBidQuantity)
+
+        asksPriceEl.appendChild(divAskPrice)
+        asksQuantityEl.appendChild(divAskQuantity)
+    }
+
+    // get children nodes of containers
+    let bidsPriceChildren = bidsPriceEl.children
+    let bidsQuantityChildren = bidsQuantityEl.children
+
+    let asksPriceChildren = asksPriceEl.children
+    let asksQuantityChildren = asksQuantityEl.children
+
+    // get "total" elements for bid and price
+    let bidsTotalEl = document.getElementById("bids-total")
+    let asksTotalEl = document.getElementById("asks-total")
+
+    // establish new websocket connection
+    let ws = new WebSocket("ws://localhost:8080/ws");
+    console.log("Attempting connection...")
+
+    // websocket handlers
+
+    // handles websocket connection openning
+    ws.onopen = function (event) {
+        console.log("OPEN");
+        ws.send("Connection established")
+    }
+    // handles websocket connection closing
+    ws.onclose = function (event) {
+        console.log("CLOSE");
+        ws.send("Connection closed")
+        ws = null;
+    }
+    // handles incoming messages from the server
+    ws.onmessage = function (event) {
+        // parse the incoming data
+        let data = JSON.parse(event.data)
+
+        // insert symbol
+        symbol.innerHTML = data.symbol
+
+        // loop with 20 iterations, as we only have 20 elements for bid and for price
+        for (let i = 0; i < 20; i++) {
+            // get price and quantity numbers for bid
+            let priceBid = data.bids[i][0]
+            let quantityBid = data.bids[i][1]
+
+            // insert numbers into corresponding elements in dom
+            bidsPriceChildren[i].innerHTML = priceBid
+            bidsQuantityChildren[i].innerHTML = quantityBid
+
+            // get price and quantity numbers for ask
+            let priceAsk = data.asks[i][0]
+            let quantityAsk = data.asks[i][1]
+
+            // insert numbers into corresponding elements in dom
+            asksPriceChildren[i].innerHTML = priceAsk
+            asksQuantityChildren[i].innerHTML = quantityAsk
+        }
+
+        // insert total for bid and ask quantities into dom
+        bidsTotalEl.innerHTML = data.total_quantity_bids
+        asksTotalEl.innerHTML = data.total_quantity_asks
+    }
+    // handles error (just prints in console)
+    ws.onerror = function (event) {
+        console.log("ERROR: " + event.data);
+    }
+</script>
+
+</html>
