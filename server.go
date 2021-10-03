@@ -56,13 +56,14 @@ func writer(conn *websocket.Conn, c chan OrderBook) {
 	for {
 		orderBook, ok := <-c
 		if !ok {
-			log.Println("not ok")
+			log.Println("Channel is empty")
 		}
 
 		data, _ := json.Marshal(orderBook)
 
 		if err := conn.WriteMessage(1, data); err != nil {
 			log.Println("Error in message write: ", err)
+			return
 		}
 	}
 }

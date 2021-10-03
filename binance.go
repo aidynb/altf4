@@ -27,7 +27,7 @@ func BinanceWSConnection(c chan OrderBook) {
 	// websocket connection to the binance api
 	conn, _, err := websocket.DefaultDialer.Dial(endpoint, nil)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalf("Couldn't connect to the Binance API: %s\n", err)
 	}
 
 	log.Println("Binance websocket connection established")
@@ -38,7 +38,8 @@ func BinanceWSConnection(c chan OrderBook) {
 	for {
 		_, message, err := conn.ReadMessage()
 		if err != nil {
-			log.Fatalf("Error in message read: %s\n", err)
+			log.Printf("Error in message read: %s\n", err)
+			continue
 		}
 
 		// parse the incoming message
