@@ -9,26 +9,70 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const BASE_URL = "wss://stream.binance.com:9443/ws/btcusdt@depth20@1000ms"
+const SYMBOL = "btcusdt"
+const DEPTH = "20"
+const UPDATE_SPEED = "1000ms"
+const BASE_URL = "wss://stream.binance.com:9443/ws/"
 
+// OrderBook - structure of the order book with symbol, bids and asks
 type OrderBook struct {
-	Symbol string
-	Bids   [][]string `json:"bids"`
-	Asks   [][]string `json:"asks"`
+	Symbol            string
+	Bids              [][]string `json:"bids"`
+	Asks              [][]string `json:"asks"`
+	TotalQuantityBids float64
+	TotalQuantityAsks float64
+}
+
+// PrintResult prints result to the console
+func PrintResult(orderBook *OrderBook) {
+	fmt.Printf("Order Book: %s\n", orderBook.Symbol)
+
+	fmt.Println("BID:")
+
+	for i := range orderBook.Bids {
+		price := orderBook.Bids[i][0]
+		quantity := orderBook.Bids[i][1]
+		fmt.Printf("Price: %s\tQuantity: %s\n", price, quantity)
+	}
+	fmt.Println("ASK:")
+
+	for i := range orderBook.Asks {
+		price := orderBook.Asks[i][0]
+		quantity := orderBook.Asks[i][1]
+		fmt.Printf("Price: %s\tQuantity: %s\n", price, quantity)
+	}
+
+	fmt.Printf("Total BID quantity: %f\n", orderBook.TotalQuantityBids)
+	fmt.Printf("Total ASK quantity: %f\n", orderBook.TotalQuantityAsks)
+}
+
+// QuantityTotal loops through the data and returns total quantity of the given data
+func QuantityTotal(data [][]string) float64 {
+	var total float64
+	for i := range data {
+		quantityStr := data[i][1]
+
+		quantityInt, err := strconv.ParseFloat(quantityStr, 32)
+		if err != nil {
+			fmt.Printf("Error converting to int: %s\n", err)
+		}
+
+		total += quantityInt
+	}
+	return total
 }
 
 func main() {
-	conn, _, err := websocket.DefaultDialer.Dial(BASE_URL, nil)
+	// main endpoint
+	endpoint := BASE_URL + SYMBOL + "@depth" + DEPTH + "@" + UPDATE_SPEED
 
-	// fmt.Println("conn: ", conn)
-	// fmt.Println("res: ", resp)
-	// fmt.Println("err: ", err)
-
+	// websocket connection to the binance api
+	conn, _, err := websocket.DefaultDialer.Dial(endpoint, nil)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	var orderBook OrderBook
+	orderBook := OrderBook{Symbol: SYMBOL}
 
 	for {
 		_, message, err := conn.ReadMessage()
@@ -37,52 +81,14 @@ func main() {
 			return
 		}
 
+		// parse the incoming message
 		json.Unmarshal([]byte(message), &orderBook)
 
-		var totalQuantityBid float64
-		var totalQuantityAsk float64
+		// get total quantity of bids and asks
+		orderBook.TotalQuantityBids = QuantityTotal(orderBook.Bids)
+		orderBook.TotalQuantityAsks = QuantityTotal(orderBook.Asks)
 
-		for i := range orderBook.Bids {
-			quantityStr := orderBook.Bids[i][1]
-
-			quantityInt, err := strconv.ParseFloat(quantityStr, 32)
-			if err != nil {
-				fmt.Printf("Error converting to int: %s\n", err)
-			}
-
-			totalQuantityBid += quantityInt
-		}
-
-		for i := range orderBook.Asks {
-			quantityStr := orderBook.Asks[i][1]
-
-			quantityInt, err := strconv.ParseFloat(quantityStr, 32)
-			if err != nil {
-				fmt.Printf("Error converting to int: %s\n", err)
-			}
-
-			totalQuantityAsk += quantityInt
-		}
-
-		fmt.Printf("Order Book: %s\n", orderBook.Symbol)
-
-		fmt.Println("BID:")
-
-		for i := range orderBook.Bids {
-			price := orderBook.Bids[i][0]
-			quantity := orderBook.Bids[i][1]
-			fmt.Printf("Price: %s\tQuantity: %s\n", price, quantity)
-		}
-		fmt.Println("ASK:")
-
-		for i := range orderBook.Asks {
-			price := orderBook.Asks[i][0]
-			quantity := orderBook.Asks[i][1]
-			fmt.Printf("Price: %s\tQuantity: %s\n", price, quantity)
-		}
-
-		fmt.Printf("Total BID quantity: %f\n", totalQuantityBid)
-		fmt.Printf("Total ASK quantity: %f\n", totalQuantityAsk)
+		PrintResult(&orderBook)
 
 	}
 }
